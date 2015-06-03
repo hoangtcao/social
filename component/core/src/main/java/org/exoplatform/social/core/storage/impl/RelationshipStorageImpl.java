@@ -709,9 +709,6 @@ public class RelationshipStorageImpl extends AbstractStorage implements Relation
       IdentityEntity from = toDeleteRelationship.getFrom();
       IdentityEntity to = toDeleteRelationship.getTo();
       
-      updateRelationshipStatistic(from, false);
-      updateRelationshipStatistic(to, false);
-
       _removeById(RelationshipEntity.class, symmetricalRelationship.getId());
       _removeById(RelationshipEntity.class, relationship.getId());
       
