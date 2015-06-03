@@ -54,10 +54,13 @@
   <component>
     <type>org.exoplatform.social.service.rest.SocialUpdaterRest</type>
   </component>
+<<<<<<< HEAD
   
   <component>
     <type>org.exoplatform.social.service.rest.IntranetNotificationRestService</type>
   </component>
+=======
+>>>>>>> fix/4.1.x/SOC-4399-4401-4525
 <!-- REST service -->
 
 <!-- Social Rest API resources for latest -->

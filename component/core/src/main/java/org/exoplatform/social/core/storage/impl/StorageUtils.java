@@ -1,19 +1,20 @@
 package org.exoplatform.social.core.storage.impl;
 
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Method;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Set;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringEscapeUtils;
@@ -32,6 +33,8 @@ import org.exoplatform.social.core.chromattic.entity.ProfileEntity;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.profile.ProfileFilter;
 import org.exoplatform.social.core.space.model.Space;
+import org.exoplatform.social.core.storage.cache.model.key.ActivityType;
+import org.exoplatform.social.core.storage.impl.ActivityStreamStorageImpl.ActivityRefType;
 import org.exoplatform.social.core.storage.query.JCRProperties;
 import org.exoplatform.social.core.storage.query.QueryFunction;
 import org.exoplatform.social.core.storage.query.WhereExpression;
@@ -41,8 +44,7 @@ import org.exoplatform.social.core.storage.query.WhereExpression;
  * @version $Revision$
  */
 public class StorageUtils {
-  //
-  private static final Log LOG = ExoLogger.getLogger(StorageUtils.class.getName());
+  private static final Log LOG = ExoLogger.getLogger(StorageUtils.class);
   //
   public static final String ASTERISK_STR = "*";
   public static final String PERCENT_STR = "%";
@@ -55,6 +57,7 @@ public class StorageUtils {
   public static final String SOC_ACTIVITY_INFO = "soc:activityInfo";
   public static final String SOC_PREFIX = "soc:";
   private final static long DAY_MILISECONDS = 86400000;//a day = 24h x 60m x 60s x 1000 milisecond.
+  private static final String MENTION_CHAR = "@";
   
   private static Class<?> cls;
   
@@ -396,9 +399,22 @@ public class StorageUtils {
   public static boolean persist() {
     try {
       ChromatticSession chromatticSession = AbstractStorage.lifecycleLookup().getSession();
-      if (chromatticSession.getJCRSession().hasPendingChanges()) {
-        chromatticSession.save();
-      }
+      chromatticSession.save();
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
+  }
+  
+  /**
+   * Refresh the current session
+   * 
+   * @return
+   */
+  public static boolean refreshSession() {
+    try {
+      ChromatticSession chromatticSession = AbstractStorage.lifecycleLookup().getSession();
+      chromatticSession.getJCRSession().refresh(true);
     } catch (Exception e) {
       return false;
     }
@@ -592,8 +608,98 @@ public class StorageUtils {
   * @param newDate
   * @return TRUE: the day after oldDate
   */
-    public static boolean afterDayOrMore(long oldDate, long newDate) {
-      long diffValue = newDate - oldDate;
-      return diffValue >= DAY_MILISECONDS;
-    }
+  public static boolean afterDayOrMore(long oldDate, long newDate) {
+    long diffValue = newDate - oldDate;
+    return diffValue >= DAY_MILISECONDS;
+  }
+    
+  /**
+   * wrap the object into soft reference.
+   * 
+   * @param value
+   * @return
+   */
+  public static <T> SoftReference<T> softReference(T value) {
+    return new SoftReference<T>(value);
+  }
+
+   /**
+    * Return the mentioner list (identityIds) from activity
+    * 
+    * @param mentionerIds
+    * @return
+    */
+   public static List<String> getIdentityIds(String[] mentionerIds) {
+     List<String> result = new ArrayList<String>();
+     for (String mentionerId : mentionerIds) {
+       result.add(mentionerId.split(MENTION_CHAR)[0]);
+     }
+
+     return result;
+   }
+   /**
+    * Translates from ActivityType to ActivityRefType
+    * @param type
+    * @return
+    */
+   public static ActivityRefType translateToRefType(ActivityType type) {
+     if (ActivityType.CONNECTION.equals(type)) {
+       return ActivityRefType.CONNECTION;
+     } else if (ActivityType.FEED.equals(type)) {
+       return ActivityRefType.FEED;
+     } else if (ActivityType.SPACES.equals(type)) {
+       return ActivityRefType.MY_SPACES;
+     } else if (ActivityType.SPACE.equals(type)) {
+       return ActivityRefType.SPACE_STREAM;
+     } else if (ActivityType.USER.equals(type)) {
+       return ActivityRefType.MY_ACTIVITIES;
+     } else {
+       return null;
+     }
+   }
+   
+   /**
+    * Translates from ActivityRefType to ActivityType
+    * 
+    * @param type
+    * @return
+    */
+   public static ActivityType translateToActivityType(ActivityRefType type) {
+     if (ActivityRefType.CONNECTION.equals(type)) {
+       return ActivityType.CONNECTION;
+     } else if (ActivityRefType.FEED.equals(type)) {
+       return ActivityType.FEED;
+     } else if (ActivityRefType.SPACE_STREAM.equals(type)) {
+       return ActivityType.SPACE;
+     } else if (ActivityRefType.MY_SPACES.equals(type)) {
+       return ActivityType.SPACES;
+     } else if (ActivityRefType.MY_ACTIVITIES.equals(type)) {
+       return ActivityType.USER;
+     } else {
+       return null;
+     }
+   }
+   
+   /**
+    * Returns the stack trace
+    * @return
+    */
+   public static String printCurrentStackTrace() {
+     return printStackTrace(Thread.currentThread().getStackTrace());
+   }
+   
+   /**
+    * Dump the current thread stack trace
+    * @param elements
+    * @return
+    */
+   public static String printStackTrace(StackTraceElement...elements) {
+     StringBuffer buffer = new StringBuffer();
+     for(StackTraceElement element : elements) {
+       buffer.append(element.toString()).append("\n");
+     }
+     
+     return buffer.toString();
+   }
+   
 }
